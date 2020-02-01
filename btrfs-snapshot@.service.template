@@ -1,0 +1,10 @@
+[Unit]
+Description=Take a snapshot of %I
+
+[Service]
+Type=oneshot
+ExecStart=PREFIX/bin/btrfs-snapshot %I
+
+[Install]
+Also=btrfs-snapshot@%i.timer
+Also=btrfs-snapshot-cleanup@%i.service

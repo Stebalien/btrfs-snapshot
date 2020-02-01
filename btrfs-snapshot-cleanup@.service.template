@@ -1,0 +1,12 @@
+[Unit]
+Description=Cleanup snapshots of %I
+
+[Service]
+Type=oneshot
+Nice=10
+CPUSchedulingPolicy=idle
+IOSchedulingClass=idle
+ExecStart=PREFIX/bin/btrfs-snapshot-cleanup %I
+
+[Install]
+Also=btrfs-snapshot-cleanup@%i.timer

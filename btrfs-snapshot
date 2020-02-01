@@ -1,0 +1,22 @@
+#!/bin/bash
+set -e
+SUBVOL="$1"
+BACKUP_DIR="${2:-$SUBVOL/.backups}"
+TODAY_DIR="$BACKUP_DIR/$(date -Is)"
+CURRENT_DIR="$BACKUP_DIR/current"
+
+err() {
+	local ret=$?
+	if [[ $ret -eq 0 ]]; then
+		ret=1
+	fi
+	echo $@ >&2
+	return $ret
+}
+
+cd /
+test -d "$SUBVOL" || err "No such directory: $SUBVOL"
+mkdir -p -m0700 "$BACKUP_DIR"
+
+btrfs subvolume snapshot -r "$SUBVOL" "$TODAY_DIR"
+ln -T -rsf "$TODAY_DIR" "$CURRENT_DIR"

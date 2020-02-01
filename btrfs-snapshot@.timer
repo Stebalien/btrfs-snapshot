@@ -1,0 +1,8 @@
+[Unit]
+Description=Hourly snapshot of %I
+
+[Timer]
+OnUnitActiveSec=1h
+
+[Install]
+WantedBy=timers.target
