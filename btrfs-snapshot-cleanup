@@ -7,14 +7,14 @@ backup_dir="${target_dir}/.backups"
 
 now="$(date '+%s')"
 day_length=$(( 60 * 60 * 24 ))
-month_length=$(( ${day_length} * 30 ))
-week_length=$(( ${day_length} * 7 ))
-year_length=$(( ${day_length} * 365 ))
+month_length=$(( day_length * 30 ))
+week_length=$(( day_length * 7 ))
+year_length=$(( day_length * 365 ))
 
 delete() {
     btrfs property set -ts "$1" ro false
     btrfs subvolume delete "$1"
-    btrfs fi sync "${backup_dir}"
+    btrfs filesystem sync "${backup_dir}"
 }
 
 backup_to_date() {
@@ -23,27 +23,27 @@ backup_to_date() {
 
 last_backup_date=0
 
-while read fname; do
+while read -r fname; do
     backup_date="$(backup_to_date "${fname}")"
 
-    time_since_last_backup="$(( ${backup_date} - ${last_backup_date} ))"
-    time_until_now="$(( $now - ${backup_date} ))"
+    time_since_last_backup="$(( backup_date - last_backup_date ))"
+    time_until_now="$(( now - backup_date ))"
 
     if [[ ${time_until_now} -gt ${year_length} ]]; then
         if [[ ${time_since_last_backup} -gt ${month_length} ]]; then
-            last_backup_date=$(( ${backup_date} - ( ${backup_date} % ${month_length} ) ))
+            last_backup_date=$(( backup_date - ( backup_date % month_length ) ))
         else
             delete "$fname"
         fi
     elif [[ ${time_until_now} -gt ${month_length} ]]; then
         if [[ ${time_since_last_backup} -gt ${week_length} ]]; then
-            last_backup_date=$(( ${backup_date} - ( ${backup_date} % ${week_length} ) ))
+            last_backup_date=$(( backup_date - ( backup_date % week_length ) ))
         else
             delete "$fname"
         fi
     elif [[ ${time_until_now} -gt ${day_length} ]]; then
         if [[ ${time_since_last_backup} -gt ${day_length} ]]; then
-            last_backup_date=$(( ${backup_date} - ( ${backup_date} % ${day_length} ) ))
+            last_backup_date=$(( backup_date - ( backup_date % day_length ) ))
         else
             delete "$fname"
         fi
