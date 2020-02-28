@@ -18,7 +18,8 @@ err() {
 
 cd /
 test -d "${subvol}" || err "No such directory: ${subvol}"
-mkdir -m0700 "${backup_dir}"
+mkdir -p "${backup_dir}"
+chmod 0700 "${backup_dir}"
 
 btrfs subvolume snapshot -r "${subvol}" "${today_dir}"
 ln -T -rsf "${today_dir}" "${current_dir}"
