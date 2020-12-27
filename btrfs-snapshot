@@ -3,6 +3,7 @@ set -e
 
 subvol="$1"
 backup_dir="${subvol}/.backups"
+ignore_file="${backup_dir}/ignore"
 backup_dir="${2:-${subvol}/.backups}"
 today_dir="${backup_dir}/$(date -Is)"
 current_dir="${backup_dir}/current"
@@ -21,6 +22,17 @@ test -d "${subvol}" || err "No such directory: ${subvol}"
 mkdir -p "${backup_dir}"
 chmod 0700 "${backup_dir}"
 
-btrfs subvolume snapshot -r "${subvol}" "${today_dir}"
+btrfs subvolume snapshot "${subvol}" "${today_dir}"
+
+if [[ -e "${ignore_file}" ]]; then
+    while read -r fname; do
+        target="${today_dir:?}/${fname}"
+        [[ -e "${target}" ]] || continue
+        rm -rf "${target}"
+    done < "${ignore_file}"
+fi
+
+btrfs property set -ts "$today_dir" ro true
+
 ln -T -rsf "${today_dir}" "${current_dir}"
 
