@@ -32,6 +32,8 @@ if [[ -e "${ignore_file}" ]]; then
     done < "${ignore_file}"
 fi
 
+find "${today_dir:?}" -name CACHEDIR.TAG -printf '%h\0' | xargs -0 rm -rf --
+
 btrfs property set -ts "$today_dir" ro true
 
 ln -T -rsf "${today_dir}" "${current_dir}"
