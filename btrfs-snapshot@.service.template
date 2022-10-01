@@ -2,6 +2,7 @@
 Description=Take a snapshot of %I
 
 [Service]
+Slice=background.slice
 Type=oneshot
 ExecStart=PREFIX/bin/btrfs-snapshot %I
 

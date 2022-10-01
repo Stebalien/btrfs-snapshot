@@ -3,6 +3,7 @@ Description=Cleanup snapshots of %I
 
 [Service]
 Type=oneshot
+Slice=background.slice
 Nice=10
 CPUSchedulingPolicy=idle
 IOSchedulingClass=idle
