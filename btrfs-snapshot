@@ -28,7 +28,7 @@ if [[ -e "${ignore_file}" ]]; then
     while read -r fname; do
         target="${today_dir:?}/${fname}"
         [[ -e "${target}" ]] || continue
-        rm -rf "${target}"
+        rm -rf -- "${target}"
     done < "${ignore_file}"
 fi
 
