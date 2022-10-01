@@ -32,7 +32,7 @@ if [[ -e "${ignore_file}" ]]; then
     done < "${ignore_file}"
 fi
 
-find "${today_dir:?}" -name CACHEDIR.TAG -printf '%h\0' | xargs -0 rm -rf --
+find "${today_dir:?}" -name .git -prune -name CACHEDIR.TAG -printf '%h\0' | xargs -0 rm -rf --
 
 btrfs property set -ts "$today_dir" ro true
 
