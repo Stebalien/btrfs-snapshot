@@ -5,7 +5,7 @@ subvol="$1"
 backup_dir="${subvol}/.backups"
 ignore_file="${backup_dir}/ignore"
 backup_dir="${2:-${subvol}/.backups}"
-today_dir="${backup_dir}/$(date -Is)"
+today_dir="${backup_dir}/$(date -u +%FT%T)"
 current_dir="${backup_dir}/current"
 
 err() {
