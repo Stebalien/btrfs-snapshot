@@ -32,14 +32,18 @@ if [[ -e "${ignore_file}" ]]; then
     done < "${ignore_file}"
 fi
 
+# NOTE: Deleting files with find is simply racy no matter what. So I pipe to xargs.
+# No, we can't use -prune. We need -depth to go in reverse order to avoid races.
+# No we can't use -execdir. Even with -depth, it still races.
+
 # Clean ignored files (build artifacts, etc.).
-find "${today_dir:?}" -mount -depth -type d -name .git -execdir git clean -Xqfd \;
+find "${today_dir:?}" -mount -depth -type d -name .git -printf '%h\0' \
+     | xargs -r -0 -I '{}' git -C '{}' clean -Xqfd || true
 
 # Remove all cache directories, but don't descend into .git directories.
 find "${today_dir:?}" -mount -depth -type f -name CACHEDIR.TAG -printf '%h\0' \
-    | xargs -r -0 rm --one-file-system -rf --
+    | xargs -r -0 rm --one-file-system -rf -- || true
 
 btrfs property set -ts "$today_dir" ro true
 
 ln -T -rsf "${today_dir}" "${current_dir}"
-
