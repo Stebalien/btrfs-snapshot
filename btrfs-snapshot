@@ -33,11 +33,13 @@ if [[ -e "${ignore_file}" ]]; then
 fi
 
 # Clean ignored files (build artifacts, etc.).
-find "${today_dir:?}" -mount -name .git -prune -execdir git clean -Xqfd \; -true
+find "${today_dir:?}" -ignore_readdir_race -mount -name .git -type d -prune \
+     -execdir git clean -Xqfd \;
 
 # Remove all cache directories, but don't descend into .git directories.
-find "${today_dir:?}" -mount -name .git -type d -prune -o -name CACHEDIR.TAG -printf '%h\0' \
-    | xargs -0 rm --one-file-system -rf -- || true
+find "${today_dir:?}" -ignore_readdir_race -mount -name .git -type d -prune \
+     -o -name CACHEDIR.TAG -printf '%h\0' \
+    | xargs -r -0 rm --one-file-system -rf --
 
 btrfs property set -ts "$today_dir" ro true
 
