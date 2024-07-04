@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+shopt -s nullglob
 
 subvol="$1"
 backup_dir="${2:-${subvol}/.backups}"
@@ -30,7 +31,7 @@ exec 4<> "${lock_file}"
 flock -n 4 || err "Failed to take lock."
 
 # Cleanup old WIP snapshots that never finished.
-stale_temp=("${backup_dir}/temp-"*(N))
+stale_temp=("${backup_dir}/temp-"*)
 if [[ ${#stale_temp} -gt 0 ]]; then
     btrfs subvolume delete "${stale_temp[@]}"
 fi
