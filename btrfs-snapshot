@@ -2,10 +2,12 @@
 set -e
 
 subvol="$1"
-backup_dir="${subvol}/.backups"
-ignore_file="${backup_dir}/ignore"
 backup_dir="${2:-${subvol}/.backups}"
-today_dir="${backup_dir}/$(date -u +%FT%T)"
+ignore_file="${backup_dir}/ignore"
+lock_file="${backup_dir}/lock"
+date="$(date -u +%FT%T)"
+today_dir="${backup_dir}/${date}"
+temp_dir="${backup_dir}/temp-${date}"
 current_dir="${backup_dir}/current"
 
 err() {
@@ -17,16 +19,29 @@ err() {
     return $ret
 }
 
+# Setup
 cd /
 test -d "${subvol}" || err "No such directory: ${subvol}"
 mkdir -p "${backup_dir}"
 chmod 0700 "${backup_dir}"
 
-btrfs subvolume snapshot "${subvol}" "${today_dir}"
+# Lock
+exec 4<> "${lock_file}"
+flock -n 4 || err "Failed to take lock."
 
+# Cleanup old WIP snapshots that never finished.
+stale_temp=("${backup_dir}/temp-"*)
+if [[ ${#stale_temp} -gt 0 ]]; then
+    btrfs subvolume delete "${stale_temp[@]}"
+fi
+
+# Snapshot
+btrfs subvolume snapshot "${subvol}" "${temp_dir}"
+
+# Cleanup snapshot
 if [[ -e "${ignore_file}" ]]; then
     while read -r fname; do
-        target="${today_dir:?}/${fname}"
+        target="${temp_dir:?}/${fname}"
         [[ -e "${target}" ]] || continue
         rm -rf -- "${target}"
     done < "${ignore_file}"
@@ -37,13 +52,16 @@ fi
 # No we can't use -execdir. Even with -depth, it still races.
 
 # Clean ignored files (build artifacts, etc.).
-find "${today_dir:?}" -mount -depth -type d -name .git -printf '%h\0' \
+find "${temp_dir:?}" -mount -depth -type d -name .git -printf '%h\0' \
      | xargs -r -0 -I '{}' git -C '{}' clean -Xqfd || true
 
 # Remove all cache directories, but don't descend into .git directories.
-find "${today_dir:?}" -mount -depth -type f -name CACHEDIR.TAG -printf '%h\0' \
+find "${temp_dir:?}" -mount -depth -type f -name CACHEDIR.TAG -printf '%h\0' \
     | xargs -r -0 rm --one-file-system -rf -- || true
 
-btrfs property set -ts "$today_dir" ro true
-
+# Finish it
+btrfs property set -ts "${temp_dir}" ro true
+sync "${temp_dir}"
+mv "${temp_dir}" "${today_dir}"
 ln -T -rsf "${today_dir}" "${current_dir}"
+sync "${backup_dir}"
