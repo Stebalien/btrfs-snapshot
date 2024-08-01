@@ -4,7 +4,7 @@ shopt -s nullglob
 
 subvol="$1"
 backup_dir="${2:-${subvol}/.backups}"
-ignore_file="${backup_dir}/ignore"
+ignore_file="${subvol}/.backupignore"
 lock_file="${backup_dir}/lock"
 date="$(date -u +%FT%T)"
 today_dir="${backup_dir}/${date}"
