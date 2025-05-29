@@ -1,6 +1,6 @@
 # BTRFS Snapshot
 
-A simple set of scripts and systemd units for taking and managing BTRFS snapshots. There actual project like [Snapper](http://snapper.io/), [yabsnap](https://github.com/hirak99/yabsnap).
+A simple set of scripts and systemd units for taking and managing BTRFS snapshots. There actual project like [Snapper](http://snapper.io/) and [yabsnap](https://github.com/hirak99/yabsnap), but this one does exactly what I need reliably and predictably with no frills, GUIs, etc.
 
 ## Installation
 
