@@ -2,6 +2,7 @@ PREFIX ?= /usr/local
 
 UNITS := btrfs-snapshot-cleanup@.timer btrfs-snapshot-cleanup@.service btrfs-snapshot@.timer btrfs-snapshot@.service
 BINS := btrfs-snapshot btrfs-snapshot-cleanup
+SYSTEMD_UNIT_DIR := $(PREFIX)/lib/systemd/
 
 .PHONY: build
 build: $(UNITS)
@@ -12,13 +13,13 @@ build: $(UNITS)
 .PHONY: install
 install: build
 	install -Dm755 -t $(PREFIX)/bin/ $(BINS)
-	install -Dm644 -t $(PREFIX)/lib/systemd/system/ $(UNITS)
-	install -dm755 $(PREFIX)/lib/systemd/user/
-	ln -f -s -t $(PREFIX)/lib/systemd/user/ $(addprefix ../system/,$(UNITS))
+	install -Dm644 -t $(SYSTEMD_UNIT_DIR)/system/ $(UNITS)
+	install -dm755 $(SYSTEMD_UNIT_DIR)/user/
+	ln -f -s -t $(SYSTEMD_UNIT_DIR)/user/ $(addprefix ../system/,$(UNITS))
 
 .PHONY: uninstall
 uninstall:
-	rm -f $(addprefix $(PREFIX)/bin/,$(BINS)) $(addprefix $(PREFIX)/lib/systemd/system/,$(UNITS)) $(addprefix $(PREFIX)/lib/systemd/user/,$(UNITS))
+	rm -f $(addprefix $(PREFIX)/bin/,$(BINS)) $(addprefix $(SYSTEMD_UNIT_DIR)/system/,$(UNITS)) $(addprefix $(SYSTEMD_UNIT_DIR)/,$(UNITS))
 
 .PHONY: clean
 clean:
