@@ -1,3 +1,2 @@
 btrfs-snapshot@.service
 btrfs-snapshot-cleanup@.service
-flake.lock
