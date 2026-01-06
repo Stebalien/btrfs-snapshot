@@ -67,10 +67,7 @@
             package = lib.mkPackageOption self'.packages "btrfs-snapshot" { };
           };
           config = lib.mkIf cfg.install {
-            systemd = {
-              packages = [ cfg.package ];
-            };
-            environment.systemPackages = [ cfg.package ];
+            systemd.packages = [ cfg.package ];
           };
         });
     });
