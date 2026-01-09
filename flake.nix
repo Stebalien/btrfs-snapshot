@@ -21,7 +21,7 @@
       imports = [ flake-parts.flakeModules.easyOverlay ];
       perSystem = { config, system, lib, pkgs, ...}:
         let
-          btrfs-snapshot = pkgs.resholve.mkDerivation {
+          btrfs-snapshot = (pkgs.resholve.mkDerivation {
             pname = "btrfs-snapshot";
             version = "1.0.0";
             src = ./.;
@@ -42,7 +42,12 @@
                 ];
               };
             };
-          };
+          }).overrideAttrs (old: {
+            preFixup = ''
+              substituteInPlace $out/share/systemd/*/*.service \
+                --replace-quiet "${old.passthru.unresholved}" "$out"
+            '' + old.preFixup;
+          });
         in rec {
           packages = {
             inherit btrfs-snapshot;
