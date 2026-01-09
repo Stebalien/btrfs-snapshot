@@ -21,22 +21,27 @@
       imports = [ flake-parts.flakeModules.easyOverlay ];
       perSystem = { config, system, lib, pkgs, ...}:
         let
-          btrfs-snapshot = pkgs.stdenv.mkDerivation {
+          btrfs-snapshot = pkgs.resholve.mkDerivation {
             pname = "btrfs-snapshot";
             version = "1.0.0";
             src = ./.;
             strictDeps = true;
-            runtimeInputs = with pkgs; [ util-linux btrfs-progs coreutils ];
-            nativeBuildInputs = with pkgs; [ gnumake m4 makeWrapper ];
+            nativeBuildInputs = with pkgs; [ gnumake m4 ];
             makeFlags = [
               "PREFIX=$(out)"
               "SYSTEMD_UNIT_DIR=$(out)/share/systemd"
             ];
-            postInstall = ''
-              for i in $out/bin/*; do
-                wrapProgram $i --prefix PATH : "${lib.makeBinPath (with pkgs; [ util-linux btrfs-progs])}"
-              done
-            '';
+            solutions = {
+              btrfs-snapshot = {
+                interpreter = "${pkgs.bash}/bin/bash";
+                scripts = [ "bin/btrfs-snapshot" "bin/btrfs-snapshot-cleanup" ];
+                inputs = with pkgs; [ util-linux btrfs-progs coreutils findutils git ];
+                execer = [
+                  "cannot:${pkgs.util-linux}/bin/flock"
+                  "cannot:${pkgs.git}/bin/git"
+                ];
+              };
+            };
           };
         in rec {
           packages = {
