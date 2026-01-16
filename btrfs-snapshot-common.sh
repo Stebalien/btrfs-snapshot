@@ -6,7 +6,7 @@ shopt -s nullglob
 identity="$(id -u)-$(id -g)"
 check_owner() {
     local id mode
-    read -r id mode < <(stat -c "%u-%g %#a")
+    read -r id mode < <(stat "$1" -c "%u-%g %#a")
     # We must own it, and nobody else can write (and no sticky!)
     [[ "$id" == "$identity" ]] && [[ $(( "$mode" & !0755 )) -eq 0 ]]
 }
