@@ -52,12 +52,13 @@ fi
 find . -ignore_readdir_race -mount -depth -type f -name CACHEDIR.TAG -printf '%h\0' \
     | xargs -r -0 rm --one-file-system -rf --
 
-btrfs property set -ts . ro true
-sync .
-
 popd
 
-# Finish it
-mv "${temp_snapshot}" "${today_snapshot}"
+# Finish it by creating a snapshot of the snapshot, then deleting the temporary snapshot.
+# That way, we get an atomic snapshot that the user can't ever mess with.
+btrfs subvolume snapshot -r "${temp_snapshot}" "${today_snapshot}"
+sync "${today_snapshot}"
 ln -T -rsf "${today_snapshot}" "${current_dir}"
+
+cleanup
 sync "${backup_dir}"

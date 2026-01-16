@@ -31,7 +31,7 @@ cleanup() {
     # Cleanup any left behind temporary directories
     if [[ -d "${temp_dir}" ]]; then
         if [[ -d "${temp_dir}/snapshot" ]]; then
-            btrfs subvolume delete "${temp_dir}/snapshot"  || err "Failed to delete failed snapshot."
+            btrfs subvolume delete "${temp_dir}/snapshot"  || err "Failed to delete temporary snapshot."
         fi
         rmdir "${temp_dir}" || err "Failed to delete temporary directory."
     fi
