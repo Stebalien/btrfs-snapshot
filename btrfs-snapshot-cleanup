@@ -1,25 +1,49 @@
 #!/bin/bash
 
-cd /
+set -eu
+shopt -s nullglob
 
-target_dir="$1"
-backup_dir="${target_dir}/.backups"
+delete() {
+    btrfs property set -ts "$1" ro false
+    btrfs subvolume delete "$1"
+}
 
+backup_to_date() {
+    date -u -d "$(basename "$1")" '+%s'
+}
+
+identity="$(id -u)-$(id -g)"
+check_owner() {
+    local id mode
+    read -r id mode < <(stat -c "%u-%g %#a")
+    [[ "$id" == "$identity" ]] && [[ $(( "$mode" & !0755 )) -eq 0 ]]
+}
+
+err() {
+    local ret=$?
+    if [[ $ret -eq 0 ]]; then
+        ret=1
+    fi
+    echo "$@" >&2
+    return $ret
+}
+
+backup_dir="./.backups"
+lock_file="${backup_dir}/.lock"
 now="$(date -u '+%s')"
 day_length=$(( 60 * 60 * 24 ))
 month_length=$(( day_length * 30 ))
 week_length=$(( day_length * 7 ))
 year_length=$(( day_length * 365 ))
 
-delete() {
-    btrfs property set -ts "$1" ro false
-    btrfs subvolume delete "$1"
-    btrfs filesystem sync "${backup_dir}"
-}
+cd "$1" || err "Failed to change directory into the subvolume: $1"
+check_owner "." || err "Refusing to snapshot a directory we don't own."
 
-backup_to_date() {
-    date -u -d "$(basename "$1")" '+%s'
-}
+[[ -d "${backup_dir}" ]] || exit 0 # Nothing to do
+check_owner "${backup_dir}" || err "Refusing use a backup dir we don't own."
+
+exec 4<> "${lock_file}"
+flock -n 4 || err "Failed to take lock."
 
 last_backup_date=0
 
@@ -51,4 +75,6 @@ while read -r fname; do
         # All done!
         break
     fi
-done < <( find "${backup_dir}" -mindepth 1 -maxdepth 1 -prune -type d | sort )
+done < <( find "${backup_dir}" -mindepth 1 -maxdepth 1 -type d -name '[!.]*' | sort )
+
+btrfs filesystem sync "${backup_dir}"
