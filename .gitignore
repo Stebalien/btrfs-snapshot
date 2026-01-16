@@ -1,2 +1,4 @@
 btrfs-snapshot@.service
 btrfs-snapshot-cleanup@.service
+btrfs-snapshot
+btrfs-snapshot-cleanup

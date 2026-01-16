@@ -28,13 +28,18 @@
             strictDeps = true;
             nativeBuildInputs = with pkgs; [ gnumake m4 ];
             makeFlags = [
-              "PREFIX=$(out)"
-              "SYSTEMD_UNIT_DIR=$(out)/share/systemd"
+              "DESTDIR=$(out)"
+              "PREFIX="
+              "SYSTEMD_UNIT_DIR=share/systemd"
             ];
             solutions = {
               btrfs-snapshot = {
                 interpreter = "${pkgs.bash}/bin/bash";
-                scripts = [ "bin/btrfs-snapshot" "bin/btrfs-snapshot-cleanup" ];
+                scripts = [
+                  "lib/btrfs-snapshot-common.sh"
+                  "bin/btrfs-snapshot"
+                  "bin/btrfs-snapshot-cleanup"
+                ];
                 inputs = with pkgs; [ util-linux btrfs-progs coreutils findutils git ];
                 execer = [
                   "cannot:${pkgs.util-linux}/bin/flock"
@@ -45,7 +50,7 @@
           }).overrideAttrs (old: {
             preFixup = ''
               substituteInPlace $out/share/systemd/*/*.service \
-                --replace-quiet "${old.passthru.unresholved}" "$out"
+                --replace-quiet "/bin/" "$out/bin/"
             '' + old.preFixup;
           });
         in rec {

@@ -1,0 +1,63 @@
+#!/bin/bash
+set -eu
+shopt -s nullglob
+
+. COMMON_SH
+
+ignore_file="./.backupignore"
+date="$(date -u +%FT%T)"
+today_snapshot="${backup_dir}/${date}"
+temp_snapshot="${temp_dir}/snapshot"
+current_dir="${backup_dir}/current"
+
+mkdir -m 0700 "${temp_dir}" || err "Failed to create temporary directory."
+trap cleanup EXIT
+
+# Snapshot into .temp/snapshot
+# We do it this way so we can operate on the snapshot read-only while it's ALSO inaccessible to
+# everyone else.
+btrfs subvolume snapshot . "${temp_snapshot}"
+
+# Cleanup & Process snapshot
+pushd "${temp_snapshot}"
+
+# Read the ignore file from the snapshot itself.
+if [[ -e "${ignore_file}" ]]; then
+    if ! check_owner "${ignore_file}"; then
+        echo "Refusing to use an ignore file we don't own, skipping."
+    else
+        while read -r fname; do
+            target="./${fname}"
+            [[ -e "${target}" ]] || continue
+            rm -rf -- "${target}"
+        done < "${ignore_file}"
+    fi
+fi
+
+# NOTE: Deleting files with find is simply racy no matter what. So I pipe to xargs.
+# No, we can't use -prune. We need -depth to go in reverse order to avoid races.
+# No we can't use -execdir. Even with -depth, it still races.
+
+# Clean ignored files (build artifacts, etc.).
+# We refuse to do this if we're root as I don't trust git to be hardened against this case. E.g.,
+# I'm concerned about the user being able to trick us into deleting files that aren't actually
+# within their git repo.
+if [[ "$(id -u)" != "0" ]]; then
+   find . -ignore_readdir_race -mount -depth -type d -name .git -printf '%h\0' \
+       | xargs -r -0 -I '{}' git -C '{}' clean -Xqfd
+fi
+
+# Remove all cache directories.
+# A user CAN abuse this to delete files not inside the cache directory
+find . -ignore_readdir_race -mount -depth -type f -name CACHEDIR.TAG -printf '%h\0' \
+    | xargs -r -0 rm --one-file-system -rf --
+
+btrfs property set -ts . ro true
+sync .
+
+popd
+
+# Finish it
+mv "${temp_snapshot}" "${today_snapshot}"
+ln -T -rsf "${today_snapshot}" "${current_dir}"
+sync "${backup_dir}"
