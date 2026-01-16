@@ -23,7 +23,7 @@ check_owner() {
 
 backup_dir="./.backups"
 ignore_file="./.backupignore"
-lock_file="${backup_dir}/lock"
+lock_file="${backup_dir}/.lock"
 date="$(date -u +%FT%T)"
 today_dir="${backup_dir}/${date}"
 temp_root="${backup_dir}/.temp"
