@@ -1,5 +1,5 @@
 [Unit]
-Description=Hourly snapshot of %I
+Description=Hourly snapshot of %f
 
 [Timer]
 OnBootSec=1h

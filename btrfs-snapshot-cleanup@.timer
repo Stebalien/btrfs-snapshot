@@ -1,5 +1,5 @@
 [Unit]
-Description=Daily snapshot cleanup of %I
+Description=Daily snapshot cleanup of %f
 
 [Timer]
 OnCalendar=daily

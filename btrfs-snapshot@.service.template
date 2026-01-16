@@ -1,10 +1,10 @@
 [Unit]
-Description=Take a snapshot of %I
+Description=Take a snapshot of %f
 
 [Service]
 Slice=background.slice
 Type=oneshot
-ExecStart=PREFIX/bin/btrfs-snapshot %I
+ExecStart=PREFIX/bin/btrfs-snapshot %f
 
 [Install]
 Also=btrfs-snapshot@%i.timer
