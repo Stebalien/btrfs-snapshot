@@ -11,16 +11,6 @@ err() {
     return $ret
 }
 
-[[ "$#" -eq 1 ]] || err "Must be called with exactly one argument: the subvolume to snapshot."
-
-backup_dir="./.backups"
-ignore_file="./.backupignore"
-lock_file="${backup_dir}/lock"
-date="$(date -u +%FT%T)"
-today_dir="${backup_dir}/${date}"
-temp_dir="${backup_dir}/temp-${date}"
-current_dir="${backup_dir}/current"
-
 identity="$(id -u)-$(id -g)"
 check_owner() {
     local id mode
@@ -29,6 +19,17 @@ check_owner() {
     [[ "$id" == "$identity" ]] && [[ $(( "$mode" & !0755 )) -eq 0 ]]
 }
 
+[[ "$#" -eq 1 ]] || err "Must be called with exactly one argument: the subvolume to snapshot."
+
+backup_dir="./.backups"
+ignore_file="./.backupignore"
+lock_file="${backup_dir}/lock"
+date="$(date -u +%FT%T)"
+today_dir="${backup_dir}/${date}"
+temp_root="${backup_dir}/.temp"
+temp_dir="${temp_root}/${date}"
+current_dir="${backup_dir}/current"
+
 # Setup
 
 # Make sure the backup volume exists and that we're the owner.
@@ -36,17 +37,21 @@ check_owner() {
 cd "$1" || err "Failed to change directory into the subvolume: $1"
 check_owner "." || err "Refusing to snapshot a directory we don't own."
 
-# Check the backups directory.
+# Check/create the backups directory.
 test -d "${backup_dir}" || btrfs subvolume create "${backup_dir}"
 check_owner "${backup_dir}" || err "Refusing use a backup dir we don't own."
-chmod 0700 "${backup_dir}"
 
 # Lock
 exec 4<> "${lock_file}"
 flock -n 4 || err "Failed to take lock."
 
+# Create & check temp root.
+mkdir -m 0700 "${temp_root}" \
+    || [[ "$(stat -c "%u-%g-%m")" == "${identity}-0700" ]] \
+    || err "Couldn't create temp directory or it wasn't private."
+
 # Cleanup old WIP snapshots that never finished.
-stale_temp=("${backup_dir}/temp-"*)
+stale_temp=("${temp_root}/"*)
 if [[ ${#stale_temp} -gt 0 ]]; then
     btrfs subvolume delete "${stale_temp[@]}"
 fi
@@ -54,7 +59,7 @@ fi
 # Snapshot
 btrfs subvolume snapshot . "${temp_dir}"
 
-# Cleanup snapshot
+# Cleanup & Process snapshot
 pushd "${temp_dir}"
 
 # Read the ignore file from the snapshot itself.
@@ -75,18 +80,25 @@ fi
 # No we can't use -execdir. Even with -depth, it still races.
 
 # Clean ignored files (build artifacts, etc.).
-find . -ignore_readdir_race -mount -depth -type d -name .git -printf '%h\0' \
-     | xargs -r -0 -I '{}' git -C '{}' clean -Xqfd
+# We refuse to do this if we're root as I don't trust git to be hardened against this case. E.g.,
+# I'm concerned about the user being able to trick us into deleting files that aren't actually
+# within their git repo.
+if [[ "$(id -u)" != "0" ]]; then
+   find . -ignore_readdir_race -mount -depth -type d -name .git -printf '%h\0' \
+       | xargs -r -0 -I '{}' git -C '{}' clean -Xqfd
+fi
 
 # Remove all cache directories.
+# A user CAN abuse this to delete files not inside the cache directory
 find . -ignore_readdir_race -mount -depth -type f -name CACHEDIR.TAG -printf '%h\0' \
     | xargs -r -0 rm --one-file-system -rf --
+
+btrfs property set -ts . ro true
+sync .
 
 popd
 
 # Finish it
-btrfs property set -ts "${temp_dir}" ro true
-sync "${temp_dir}"
 mv "${temp_dir}" "${today_dir}"
 ln -T -rsf "${today_dir}" "${current_dir}"
 sync "${backup_dir}"
