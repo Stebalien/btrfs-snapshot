@@ -98,9 +98,7 @@
                 The units must be manually enabled for each subvolume.
               '';
             };
-            package = lib.mkPackageOption pkgs "btrfs-snapshot" {
-              default = pkgs.btrfs-snapshot;
-            };
+            package = lib.mkPackageOption self.packages.${pkgs.system} "btrfs-snapshot" { };
           };
           config = lib.mkIf cfg.install {
             systemd.packages = [ cfg.package ];
