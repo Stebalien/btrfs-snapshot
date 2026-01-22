@@ -5,7 +5,8 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   };
 
-  outputs = { nixpkgs, self, ... }:
+  outputs =
+    { nixpkgs, self, ... }:
     let
       eachSystem = nixpkgs.lib.genAttrs [
         "i686-linux"
@@ -14,16 +15,21 @@
         "armv7l-linux"
       ];
     in
-      {
-        packages = eachSystem (system:
-          let
-            pkgs = nixpkgs.legacyPackages.${system};
-            btrfs-snapshot = (pkgs.resholve.mkDerivation {
+    {
+      packages = eachSystem (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          btrfs-snapshot =
+            (pkgs.resholve.mkDerivation {
               pname = "btrfs-snapshot";
               version = "1.0.0";
               src = ./.;
               strictDeps = true;
-              nativeBuildInputs = with pkgs; [ gnumake m4 ];
+              nativeBuildInputs = with pkgs; [
+                gnumake
+                m4
+              ];
               makeFlags = [
                 "DESTDIR=$(out)"
                 "PREFIX="
@@ -37,52 +43,68 @@
                     "bin/btrfs-snapshot"
                     "bin/btrfs-snapshot-cleanup"
                   ];
-                  inputs = with pkgs; [ util-linux btrfs-progs coreutils findutils git ];
+                  inputs = with pkgs; [
+                    util-linux
+                    btrfs-progs
+                    coreutils
+                    findutils
+                    git
+                  ];
                   execer = [
                     "cannot:${pkgs.util-linux}/bin/flock"
                     "cannot:${pkgs.git}/bin/git"
                   ];
                 };
               };
-            }).overrideAttrs (old: {
-              preFixup = ''
-              substituteInPlace $out/share/systemd/*/*.service \
-                --replace-quiet "/bin/" "$out/bin/"
-            '' + old.preFixup;
-            });
-          in
-            {
-              inherit btrfs-snapshot;
-              default = btrfs-snapshot;
-            }
-        );
+            }).overrideAttrs
+              (old: {
+                preFixup = ''
+                  substituteInPlace $out/share/systemd/*/*.service \
+                    --replace-quiet "/bin/" "$out/bin/"
+                ''
+                + old.preFixup;
+              });
+        in
+        {
+          inherit btrfs-snapshot;
+          default = btrfs-snapshot;
+        }
+      );
 
-        overlays.default = final: prev: {
-          inherit (self.packages.${final.system}) btrfs-snapshot;
-        };
+      formatter = eachSystem (system: nixpkgs.legacyPackages.${system}.nixfmt-tree);
 
-        nixosModules.default = { lib, config, pkgs, ... }:
-          let
-            cfg = config.services.btrfs-snapshot;
-          in
-            {
-              options.services.btrfs-snapshot = {
-                install = lib.mkOption {
-                  type = lib.types.bool;
-                  default = false;
-                  description = ''
+      overlays.default = final: prev: {
+        inherit (self.packages.${final.system}) btrfs-snapshot;
+      };
+
+      nixosModules.default =
+        {
+          lib,
+          config,
+          pkgs,
+          ...
+        }:
+        let
+          cfg = config.services.btrfs-snapshot;
+        in
+        {
+          options.services.btrfs-snapshot = {
+            install = lib.mkOption {
+              type = lib.types.bool;
+              default = false;
+              description = ''
                 Whether to install the systemd units for btrfs-snapshot.
 
                 The units must be manually enabled for each subvolume.
               '';
-                };
-                package = lib.mkPackageOption pkgs "btrfs-snapshot" {
-                  default = pkgs.btrfs-snapshot;
-                };
-              };
-              config = lib.mkIf cfg.install {
-                systemd.packages = [ cfg.package ];
-              };
             };
-      };
+            package = lib.mkPackageOption pkgs "btrfs-snapshot" {
+              default = pkgs.btrfs-snapshot;
+            };
+          };
+          config = lib.mkIf cfg.install {
+            systemd.packages = [ cfg.package ];
+          };
+        };
+    };
 }
