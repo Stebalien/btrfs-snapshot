@@ -40,7 +40,7 @@
           # I think there's a bug somewhere.
           postResholve = ''
             substituteInPlace $out/lib/systemd/*/*.service \
-              --replace-quiet "/bin/" "$out/bin/"
+              --replace-quiet "=/bin/" "=$out/bin/"
           '';
           solutions = {
             btrfs-snapshot = {
