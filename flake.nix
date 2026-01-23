@@ -15,50 +15,55 @@
         "armv7l-linux"
       ];
       mkPackages = pkgs: rec {
-        btrfs-snapshot =
-          (pkgs.resholve.mkDerivation {
-            pname = "btrfs-snapshot";
-            version = "1.0.0";
-            src = ./.;
-            strictDeps = true;
-            nativeBuildInputs = with pkgs; [
-              gnumake
-              m4
-            ];
-            makeFlags = [
-              "DESTDIR=$(out)"
-              "PREFIX="
-              "SYSTEMD_UNIT_DIR=share/systemd"
-            ];
-            solutions = {
-              btrfs-snapshot = {
-                interpreter = "${pkgs.bash}/bin/bash";
-                scripts = [
-                  "lib/btrfs-snapshot-common.sh"
-                  "bin/btrfs-snapshot"
-                  "bin/btrfs-snapshot-cleanup"
-                ];
-                inputs = with pkgs; [
-                  util-linux
-                  btrfs-progs
-                  coreutils
-                  findutils
-                  git
-                ];
-                execer = [
-                  "cannot:${pkgs.util-linux}/bin/flock"
-                  "cannot:${pkgs.git}/bin/git"
-                ];
-              };
+        btrfs-snapshot = pkgs.resholve.mkDerivation {
+          pname = "btrfs-snapshot";
+          version = "1.0.0";
+          src = ./.;
+          strictDeps = true;
+          nativeBuildInputs = with pkgs; [
+            gnumake
+            m4
+          ];
+          makeFlags = [
+            "DESTDIR=$(out)"
+            "PREFIX="
+            "SYSTEMD_UNIT_DIR=lib/systemd"
+          ];
+          # Three is something SERIOUSLY funky with how nix handles user units.
+          dontMoveSystemdUserUnits = true;
+          postInstall = ''
+            mkdir -p $out/share/systemd/
+            ln -Lsr $out/lib/systemd/system $out/share/systemd/system
+          '';
+
+          # Resholved seems to move these already?
+          # I think there's a bug somewhere.
+          postResholve = ''
+            substituteInPlace $out/lib/systemd/*/*.service \
+              --replace-quiet "/bin/" "$out/bin/"
+          '';
+          solutions = {
+            btrfs-snapshot = {
+              interpreter = "${pkgs.bash}/bin/bash";
+              scripts = [
+                "lib/btrfs-snapshot-common.sh"
+                "bin/btrfs-snapshot"
+                "bin/btrfs-snapshot-cleanup"
+              ];
+              inputs = with pkgs; [
+                util-linux
+                btrfs-progs
+                coreutils
+                findutils
+                git
+              ];
+              execer = [
+                "cannot:${pkgs.util-linux}/bin/flock"
+                "cannot:${pkgs.git}/bin/git"
+              ];
             };
-          }).overrideAttrs
-            (old: {
-              preFixup = ''
-                substituteInPlace $out/share/systemd/*/*.service \
-                  --replace-quiet "/bin/" "$out/bin/"
-              ''
-              + old.preFixup;
-            });
+          };
+        };
         default = btrfs-snapshot;
       };
     in
@@ -96,6 +101,7 @@
           };
           config = lib.mkIf cfg.install {
             systemd.packages = [ cfg.package ];
+            environment.systemPackages = [ cfg.package ];
           };
         };
     };
