@@ -26,11 +26,7 @@ if [[ -e "${ignore_file}" ]]; then
     if ! check_owner "${ignore_file}"; then
         echo "Refusing to use an ignore file we don't own, skipping."
     else
-        while read -r fname; do
-            target="./${fname}"
-            [[ -e "${target}" ]] || continue
-            rm -rf -- "${target}"
-        done < "${ignore_file}"
+        xargs -r rm --one-file-system -rf -- < "${ignore_file}"
     fi
 fi
 
