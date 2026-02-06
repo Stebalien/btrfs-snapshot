@@ -8,6 +8,7 @@ ignore_file="./.backupignore"
 date="$(date -u +%FT%T)"
 today_snapshot="${backup_dir}/${date}"
 temp_snapshot="${temp_dir}/snapshot"
+temp_link="${temp_dir}/temp_link"
 current_dir="${backup_dir}/current"
 
 mkdir -m 0700 "${temp_dir}" || err "Failed to create temporary directory."
@@ -54,7 +55,10 @@ popd
 # That way, we get an atomic snapshot that the user can't ever mess with.
 btrfs subvolume snapshot -r "${temp_snapshot}" "${today_snapshot}"
 sync "${today_snapshot}"
-ln -T -rsf "${today_snapshot}" "${current_dir}"
+
+# Create a new symlink, then atomically replace the old one.
+ln -s -T "${date}" "${temp_link}"
+mv -f -T "${temp_link}" "${current_dir}"
 
 cleanup
 sync "${backup_dir}"
