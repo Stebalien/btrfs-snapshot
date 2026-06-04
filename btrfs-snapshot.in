@@ -41,7 +41,7 @@ fi
 # within their git repo.
 if [[ "$(id -u)" != "0" ]]; then
    find . -ignore_readdir_race -mount -depth -type d -name .git -printf '%h\0' \
-       | xargs -r -0 -I '{}' git -C '{}' clean -Xqfd
+       | xargs -r -0 -I '{}' git -c core.fsmonitor=false -C '{}' clean -Xqfd
 fi
 
 # Remove all cache directories.
